@@ -1,0 +1,288 @@
+DATA PREPARATION AND UNDERSTANDING 
+
+QUESTION 1. What is the total number of rows in each of the three tables in the databas
+
+SOLUTION 1:
+
+
+SELECT * FROM (
+SELECT 'CUSTOMER' AS TABLE_NAME, COUNT(*) AS NO_OF_RECORDS FROM CUSTOMER UNION ALL
+SELECT 'PROD_CAT_INFO' AS TABLE_NAME, COUNT(*) AS NO_OF_RECORDS FROM PROD_CAT_INFO UNION ALL
+SELECT 'TRANSACTIONS' AS TABLE_NAME, COUNT(*) AS NO_OF_RECORDS FROM TRANSACTIONS
+) TBL
+
+
+
+
+/************************************************************************************************************************************/
+
+QUESTION 2. What is the total number of transactions that have a return?
+
+SOLTUION 2:
+
+SELECT DISTINCT COUNT(CASE WHEN QTY<0 THEN QTY END) AS [TOTAL RETURNS]
+FROM TRANSACTIONS
+
+
+
+/************************************************************************************************************************************/
+
+QUESTION 3. As you would have noticed the dates provided by the dataset are not in the correct format. At first please convert 
+            the date variables into valid date formats before proceeding ahead.
+
+SOLUTION 3:
+
+SELECT  CONVERT(datetime,T2.DOB,103) AS [NEW DOB],
+CONVERT(datetime,T1.TRAN_DATE,103) AS [NEW_TRAN_DATE]
+FROM TRANSACTIONS AS T1
+LEFT JOIN CUSTOMER AS T2 ON T1.CUST_ID=T2.CUSTOMER_ID
+
+
+/************************************************************************************************************************************/
+
+QUESTION 4. What is the time range for the transaction data available for analysis? Show the output in the number of days, months
+            and years simultaneously in different columns.
+
+SOLUTION 4: 
+
+
+SELECT TRAN_DATE, ABS(datediff(DAY,MAX(CONVERT(datetime,TRAN_DATE,103)) OVER(),CONVERT(datetime,TRAN_DATE,103))) [DAYS],
+ABS(datediff(MONTH,MAX(CONVERT(datetime,TRAN_DATE,103)) OVER(),CONVERT(datetime,TRAN_DATE,103))) [MONTHS],
+ABS(datediff(YEAR,MAX(CONVERT(datetime,TRAN_DATE,103)) OVER(),CONVERT(datetime,TRAN_DATE,103))) [YEARS]
+FROM
+TRANSACTIONS
+
+
+/************************************************************************************************************************************/
+
+QUESTION 5. Which product category does the sub category DIY belong to?
+SOLUTION 5:
+
+
+SELECT PROD_CAT FROM PROD_CAT_INFO
+WHERE PROD_SUBCAT='DIY'
+
+
+
+
+/************************************************************************************************************************************/
+/************************************************************************************************************************************/
+                    
+
+
+DATA ANALYSIS
+
+QUESTION 1.  Which channel is most frequently used for transactions?
+
+SOLUTION 1:
+
+SELECT TOP 1 STORE_TYPE AS MOST_FREQUENTLY_USED_CHANNEL FROM
+TRANSACTIONS
+GROUP BY STORE_TYPE
+ORDER BY COUNT(TRANSACTION_ID) DESC
+
+/************************************************************************************************************************************/
+
+QUESTION 2. What is the count of male and female customers in the database?
+
+SOLUTION 2:
+
+SELECT GENDER, COUNT(CUSTOMER_ID) AS HEAD_COUNT FROM
+CUSTOMER
+GROUP BY GENDER
+HAVING GENDER IN('M','F')
+
+/************************************************************************************************************************************/
+
+QUESTION 3. From which city do we have the maximum number of customers and how many?
+
+SOLUTION 3:
+
+SELECT  TOP 1 CITY_CODE, COUNT(CUSTOMER_ID) AS NO_OF_CUSTOMERS FROM
+CUSTOMER
+GROUP BY CITY_CODE
+ORDER BY COUNT(CUSTOMER_ID) DESC
+
+/************************************************************************************************************************************/
+QUESTON 4. How many sub categories are there under the books category?
+
+SOLUTION 4: 
+
+SELECT COUNT(PROD_SUBCAT) AS NO_OF_SUB_CAT_IN_BOOKS  FROM
+PROD_CAT_INFO 
+GROUP BY PROD_CAT 
+HAVING PROD_CAT ='BOOKS'
+
+/************************************************************************************************************************************/
+QUESTION 5. What is the maximum quantity of products ever ordered?
+
+SOLUTION 5:
+
+SELECT MAX(QTY) AS [MAXIMUM QUANTITY OF PRODUCTS] FROM
+TRANSACTIONS
+
+/************************************************************************************************************************************/
+
+QUESTION 6. What is the net total revenue generated in categories Electronics and Books?
+
+SOLUTION 6:
+
+SELECT T1.PROD_CAT, SUM(T2.TOTAL_AMT) AS [NET TOTAL REVENUE] FROM
+PROD_CAT_INFO AS T1
+LEFT JOIN TRANSACTIONS AS T2 ON T1.PROD_SUB_CAT_CODE=T2.PROD_SUBCAT_CODE AND T1.PROD_CAT_CODE=T2.PROD_CAT_CODE
+WHERE PROD_CAT IN('ELECTRONICS','BOOKS')
+GROUP BY T1.PROD_CAT
+
+/************************************************************************************************************************************/
+
+QUESTION 7. How many customers have >10 transactions with us , excluding returns?
+
+Solution 7:
+
+SELECT COUNT(CUST_ID) AS NO_OF_CUST_WITH_OVER_10_ORDERS
+FROM
+(SELECT CUST_ID, COUNT(CASE WHEN TOTAL_AMT>0 THEN TOTAL_AMT END) AS [NUMBER OF ORDERS] 
+FROM
+TRANSACTIONS
+GROUP BY CUST_ID	
+HAVING COUNT(CASE WHEN TOTAL_AMT>0 THEN TOTAL_AMT END)>10)
+TRANSACTIONS
+
+/************************************************************************************************************************************/
+
+QUESTION 8. What is the combined revenue earned from the "Electronics" & "Clothing" categories from the "Flagship stores"?
+
+SOLUTION 8:
+
+SELECT T2.STORE_TYPE, SUM(CASE WHEN PROD_CAT IN('ELECTRONICS', 'CLOTHING') THEN TOTAL_AMT END) AS [ELECTORINCS + CLOTHING TOTAL REVENUE] FROM
+PROD_CAT_INFO AS T1
+LEFT JOIN TRANSACTIONS AS T2 ON T1.PROD_SUB_CAT_CODE=T2.PROD_SUBCAT_CODE AND T1.PROD_CAT_CODE=T2.PROD_CAT_CODE
+WHERE T2.STORE_TYPE= 'FLAGSHIP STORE'
+GROUP BY T2.STORE_TYPE
+
+/************************************************************************************************************************************/
+
+QUESTION 9. What is the total revenue generated from "Male" customers in "Electronics" category? Output should display total
+            revenue by product sub- category?
+
+SOLUTION 9:
+
+SELECT T1.PROD_SUBCAT, SUM(T2.TOTAL_AMT) AS [NET TOTAL REVENUE] FROM
+PROD_CAT_INFO AS T1
+LEFT JOIN TRANSACTIONS AS T2 ON T1.PROD_SUB_CAT_CODE=T2.PROD_SUBCAT_CODE AND T1.PROD_CAT_CODE=T2.PROD_CAT_CODE
+LEFT JOIN CUSTOMER AS T3 ON T2.CUST_ID=T3.CUSTOMER_ID
+WHERE T1.PROD_CAT='ELECTRONICS' AND T3.GENDER='M'
+GROUP BY T1.PROD_CAT,T1.PROD_SUBCAT
+
+/************************************************************************************************************************************/
+
+QUESTION 10. What is the percentage of sales and returns by product sub category; display only the top 5 sub categories 
+             in terms of sales.
+
+SOLUTION 10:
+
+SELECT TOP 5 T2.PROD_SUBCAT AS [SUB CATEGORY],
+
+(SUM(CASE WHEN T1.TOTAL_AMT>0 THEN T1.TOTAL_AMT ELSE 0 END )  +
+SUM( CASE WHEN T1.TOTAL_AMT<0 THEN ABS(T1.TOTAL_AMT) ELSE 0 END)) AS [TOTAL SALES],
+
+(SUM(CASE WHEN T1.TOTAL_AMT>0 THEN T1.TOTAL_AMT ELSE 0 END) /
+   (SUM(CASE WHEN T1.TOTAL_AMT>0 THEN T1.TOTAL_AMT ELSE 0 END )  +
+SUM( CASE WHEN T1.TOTAL_AMT<0 THEN ABS(T1.TOTAL_AMT) ELSE 0 END)))*100 AS [PERCENTAGE SALES],
+
+SUM( CASE WHEN T1.TOTAL_AMT<0 THEN ABS(T1.TOTAL_AMT) ELSE 0 END)/
+(SUM(CASE WHEN T1.TOTAL_AMT>0 THEN T1.TOTAL_AMT ELSE 0 END )  +
+SUM( CASE WHEN T1.TOTAL_AMT<0 THEN ABS(T1.TOTAL_AMT) ELSE 0 END))*100 AS [PERCENTAGE RETURNS]
+
+FROM TRANSACTIONS AS T1
+LEFT JOIN PROD_CAT_INFO AS T2 ON T1.PROD_SUBCAT_CODE=T2.PROD_SUB_CAT_CODE AND T1.PROD_CAT_CODE=T2.PROD_CAT_CODE
+GROUP BY T2.PROD_SUBCAT
+ORDER BY [PERCENTAGE SALES]  DESC
+
+
+/************************************************************************************************************************************/
+
+QUESTION 11. For all customers aged between 25 to 35 years find what is the net total revenue generated by these customers in the last 
+             30 days of transactions from max transaction date available in the data?
+
+SOLUTION 11:
+SELECT  SUM(T1.TOTAL_AMT) AS [TOTAL REVENUE]
+ FROM TRANSACTIONS AS T1
+LEFT JOIN CUSTOMER AS T2 ON T1.CUST_ID=T2.CUSTOMER_ID
+INNER JOIN 
+(SELECT MAX(CONVERT(datetime,T1.TRAN_DATE,103)) AS TRAN_DATE,T1.CUST_ID FROM TRANSACTIONS AS T1
+GROUP BY T1.CUST_ID)
+AS DATASET ON DATASET.CUST_ID=T2.CUSTOMER_ID
+WHERE (DATEDIFF(YEAR,CONVERT(datetime,DOB,103),GETDATE()) BETWEEN 25 AND 35) AND CONVERT(datetime,T1.TRAN_DATE,103) BETWEEN
+DATEADD(DAY, -30, (CONVERT(datetime,DATASET.TRAN_DATE,103))) AND
+CONVERT(datetime,DATASET.TRAN_DATE,103) 
+
+
+/************************************************************************************************************************************/
+
+QUESTION 12. Which product has seen the maximum value of returns in the last 3 months of transactions?
+
+SOLUTION 12.
+
+SELECT TOP 1 T2.PROD_CAT 
+FROM TRANSACTIONS AS T1
+LEFT JOIN PROD_CAT_INFO AS T2 ON T1.PROD_SUBCAT_CODE=T2.PROD_SUB_CAT_CODE AND T1.PROD_CAT_CODE=T2.PROD_CAT_CODE
+LEFT JOIN CUSTOMER AS T3 ON T1.CUST_ID=T3.CUSTOMER_ID
+INNER JOIN 
+(SELECT MAX(CONVERT(datetime,T1.TRAN_DATE,103)) AS TRAN_DATE,T1.CUST_ID FROM TRANSACTIONS AS T1
+GROUP BY T1.CUST_ID)
+AS DATASET ON DATASET.CUST_ID=T3.CUSTOMER_ID
+WHERE (CONVERT(datetime,T1.TRAN_DATE,103) BETWEEN
+DATEADD(MONTH, -3, (CONVERT(datetime,DATASET.TRAN_DATE,103))) AND CONVERT(datetime,DATASET.TRAN_DATE,103))
+GROUP BY T2.PROD_CAT
+ORDER BY SUM(CASE WHEN T1.QTY<0 THEN ABS(T1.QTY) END) DESC
+
+
+/************************************************************************************************************************************/
+QUESTION 13. Which store type sells the maximum products; by value of sales amount and by quantity sold?
+
+SOLUTION 13:
+
+SELECT  TOP 1 STORE_TYPE  
+FROM TRANSACTIONS 
+GROUP BY STORE_TYPE
+ORDER BY SUM(TOTAL_AMT) DESC, SUM(CASE WHEN QTY>0 THEN QTY END) DESC
+
+
+/************************************************************************************************************************************/
+
+QUESTION 14. What are the categories for which average revenue is above the overall average?
+
+SOLUTION 14:
+
+SELECT T1.PROD_CAT AS CATEGORY , AVG(T2.TOTAL_AMT) AS [AVERAGE REVENUE] FROM
+(SELECT T2.*, AVG(T2.TOTAL_AMT) OVER() AS TOTAL_AVERAGE
+FROM 
+TRANSACTIONS AS T2) T2 JOIN 
+PROD_CAT_INFO AS T1 ON T2.PROD_CAT_CODE=T1.PROD_CAT_CODE AND T2.PROD_SUBCAT_CODE=T1.PROD_SUB_CAT_CODE
+GROUP BY T1.PROD_CAT, TOTAL_AVERAGE
+HAVING AVG(T2.TOTAL_AMT)> TOTAL_AVERAGE
+
+/************************************************************************************************************************************/
+
+QUESTION 15. Find the average and the total revenue by each subcategory for the categories which are among the top five
+             categories in terms of quantity sold.
+
+SOLUTION 15:
+
+SELECT T1.PROD_CAT, T1.PROD_SUBCAT,
+SUM(CASE WHEN T2.TOTAL_AMT > 0 THEN T2.TOTAL_AMT END) AS [NET TOTAL REVENUE], 
+AVG(CASE WHEN T2.TOTAL_AMT > 0 THEN T2.TOTAL_AMT END) AS [AVERAGE REVENUE] 
+FROM
+PROD_CAT_INFO AS T1
+LEFT JOIN TRANSACTIONS AS T2 ON T1.PROD_SUB_CAT_CODE=T2.PROD_SUBCAT_CODE AND T1.PROD_CAT_CODE=T2.PROD_CAT_CODE
+WHERE T1.PROD_CAT IN ( SELECT TOP 5 T1.PROD_CAT 
+FROM 
+PROD_CAT_INFO AS T1
+LEFT JOIN TRANSACTIONS AS T2 ON T1.PROD_SUB_CAT_CODE=T2.PROD_SUBCAT_CODE AND T1.PROD_CAT_CODE=T2.PROD_CAT_CODE
+GROUP BY T1.PROD_CAT
+ORDER BY SUM(CASE WHEN T2.QTY > 0 THEN T2.QTY END) DESC )
+GROUP BY T1.PROD_SUBCAT, T1.PROD_CAT
+ORDER BY T1.PROD_CAT,SUM(CASE WHEN T2.QTY > 0 THEN T2.QTY END) DESC 
+/************************************************************************************************************************************/
+
